@@ -29,6 +29,8 @@ TestFixture.h
 #include "cppunit/TextTestRunner.h" // TestRunner
 
 #define private public
+#define protected public
+// #define class struct
 
 #include "Allocator.h"
 
@@ -87,6 +89,7 @@ struct TestAllocator : CppUnit::TestFixture {
             x.destroy(e);}
         x.deallocate(b, s);}
 
+
     // -----
     // suite
     // -----
@@ -96,186 +99,104 @@ struct TestAllocator : CppUnit::TestFixture {
     CPPUNIT_TEST(test_ten);
     CPPUNIT_TEST_SUITE_END();};
 
-template <typename A>
-struct OurTests : CppUnit::TestFixture {
-    // --------
-    // typedefs
-    // --------
+struct MyTests : CppUnit::TestFixture {
 
-    typedef typename A::value_type value_type;
-    typedef typename A::difference_type difference_type;
-    typedef typename A::pointer pointer;
-    typedef typename A::size_type size_type;
+    // -----
+    // valid
+    // -----
 
-    static const size_type value_size = sizeof (value_type);
-    static const size_type sentinel_size = sizeof (size_type);
-
-    // ----------------
-    // test_constructor
-    // ----------------
-
-    /* test if the allocator is allocated correctly */
-    void test_constructor () {
-        A x;
-        CPPUNIT_ASSERT (*reinterpret_cast<size_type*>(&x.a[0]) == *reinterpret_cast<size_type*>(&x.a[x.allocator_size - sentinel_size]));
-        CPPUNIT_ASSERT (*reinterpret_cast<size_type*>(&x.a[0]) == x.allocator_size - 2 * sentinel_size);}
-
-    // ---------
-    // test_view
-    // ---------
-
-    /* test if view can read the sentinel value given the char pointer */
-    void test_view_1 () {
-        A x;
-        size_type sentinel_value = x.allocator_size - 2 * sentinel_size;
-        CPPUNIT_ASSERT (x.view (&x.a[0]) == sentinel_value);
-        CPPUNIT_ASSERT (x.view (&x.a[x.allocator_size - sentinel_size]) == sentinel_value);}
-
-    /* test if view can modify the sentinel value (aka is it returning l-value) */
-    void test_view_2 () {
-        A x;
-        x.view (&x.a[0]) = 123;
-        x.view (&x.a[x.allocator_size - sentinel_size]) = -321;
-        CPPUNIT_ASSERT (x.view (&x.a[0]) == 123);
-        CPPUNIT_ASSERT (x.view (&x.a[x.allocator_size - sentinel_size]) == -321);}
-    
-    /* test if view can write to any location given a char pointer */
-    void test_view_3 () {
-        A x;
-        for (size_type i = 0; i < x.allocator_size; i+=4)
-            x.view (&x.a[i]) = i;
-        for (size_type i = 0; i < x.allocator_size; i+=4)
-            CPPUNIT_ASSERT (x.view (&x.a[i]) == i);}
-
-    // ----------
-    // test_valid
-    // ----------
-
-    /* test if valid works for the initial allocator (with 2 correct sentinels) */
-    void test_valid_1 () {
-        A x;
-        CPPUNIT_ASSERT (*reinterpret_cast<size_type*>(&x.a[0]) == *reinterpret_cast<size_type*>(&x.a[x.allocator_size - sentinel_size]));
-        CPPUNIT_ASSERT (x.valid ());}
-    
-    /* test if valid returns false with an incorrect sentinel */
-    void test_valid_2 () {
-        A x;
-        x.a[x.allocator_size - sentinel_size] = 1;
-        CPPUNIT_ASSERT (!x.valid ());}
-
-    /* test if valid works for a negative pair of sentinels */
-    void test_valid_3 () {
-        A x;
-        size_type sentinel_value = x.allocator_size - 2 * sentinel_size;
-        *reinterpret_cast<size_type*>(&x.a[0]) = -sentinel_value;
-        *reinterpret_cast<size_type*>(&x.a[x.allocator_size - sentinel_size]) = -sentinel_value;
-        CPPUNIT_ASSERT (x.valid ());}
-
-    // -------------
-    // test_allocate
-    // -------------
-
-    /* test if allocate correctly adds and modifies sentinels */
-    void test_allocate_1 () {
-        A x;
-        x.allocate (5);
-        size_type allocated = 5 * value_size;
-        CPPUNIT_ASSERT (*reinterpret_cast<size_type*>(&x.a[0]) == -allocated);
-        CPPUNIT_ASSERT (*reinterpret_cast<size_type*>(&x.a[sentinel_size + allocated]) == -allocated);
-        CPPUNIT_ASSERT (*reinterpret_cast<size_type*>(&x.a[2 * sentinel_size + allocated]) == x.allocator_size - 4 * sentinel_size - allocated);
-        CPPUNIT_ASSERT (*reinterpret_cast<size_type*>(&x.a[x.allocator_size - sentinel_size]) == x.allocator_size - 4 * sentinel_size - allocated);}
-
-    /* test if multiple allocate calls correctly add and modify sentinels */
-    void test_allocate_2 () {
-        A x;
-        x.allocate (5);
-        size_type allocated_1 = 5 * value_size;
-        x.allocate (1);
-        size_type allocated_2 = value_size;
-        CPPUNIT_ASSERT (*reinterpret_cast<size_type*>(&x.a[0]) == -allocated_1);
-        CPPUNIT_ASSERT (*reinterpret_cast<size_type*>(&x.a[sentinel_size + allocated_1]) == -allocated_1);
-        CPPUNIT_ASSERT (*reinterpret_cast<size_type*>(&x.a[2 * sentinel_size + allocated_1]) == -allocated_2);
-        CPPUNIT_ASSERT (*reinterpret_cast<size_type*>(&x.a[3 * sentinel_size + allocated_1 + allocated_2]) == -allocated_2);
-        CPPUNIT_ASSERT (*reinterpret_cast<size_type*>(&x.a[4 * sentinel_size + allocated_1 + allocated_2]) == x.allocator_size - 6 * sentinel_size - allocated_1 - allocated_2);
-        CPPUNIT_ASSERT (*reinterpret_cast<size_type*>(&x.a[x.allocator_size - sentinel_size]) == x.allocator_size - 6 * sentinel_size - allocated_1 - allocated_2);}
-
-    /* test if bad_alloc exception is thrown for attempting to allocate negative space */
-    void test_allocate_3 () {
-        A x;
-        try {
-            x.allocate (-5);
-            CPPUNIT_ASSERT (false);}
-        catch (std::bad_alloc&) {}}
-
-    /* test if bad_alloc exception is thrown when there is not enough space to allocate */
-    void test_allocate_4 () {
-        A x;
-        try {
-            x.allocate (x.allocator_size);
-            CPPUNIT_ASSERT (false);}
-        catch (std::bad_alloc&) {}}
-
-    // ---------------
-    // test_deallocate
-    // ---------------
-
-    /* test if deallocate correctly changes negative sentinel values to positive */
-    void test_deallocate_1 () {
-        A x;
-        size_type sentinel_value = x.allocator_size - 2 * sentinel_size;
-        *reinterpret_cast<size_type*>(&x.a[0]) = -sentinel_value;
-        *reinterpret_cast<size_type*>(&x.a[x.allocator_size - sentinel_size]) = -sentinel_value;
-        x.deallocate (reinterpret_cast<pointer>(&x.a[4]));
-        CPPUNIT_ASSERT (*reinterpret_cast<size_type*>(&x.a[0]) == sentinel_value);
-        CPPUNIT_ASSERT (*reinterpret_cast<size_type*>(&x.a[x.allocator_size - sentinel_size]) == sentinel_value);}
-
-    /* test if deallocate does not merge this block with adjacent busy blocks */
-    void test_deallocate_2 () {
-        A x;
-        *reinterpret_cast<size_type*>(&x.a[0]) = -value_size;
-        *reinterpret_cast<size_type*>(&x.a[sentinel_size + value_size]) = -value_size;
-        *reinterpret_cast<size_type*>(&x.a[2 * sentinel_size + value_size]) = -x.allocator_size + 4 * sentinel_size + value_size;
-        *reinterpret_cast<size_type*>(&x.a[x.allocator_size - sentinel_size]) = -x.allocator_size + 4 * sentinel_size + value_size;
-        x.deallocate (reinterpret_cast<pointer>(&x.a[4]));
-        CPPUNIT_ASSERT (*reinterpret_cast<size_type*>(&x.a[0]) == value_size);
-        CPPUNIT_ASSERT (*reinterpret_cast<size_type*>(&x.a[sentinel_size + value_size]) == value_size);
-        CPPUNIT_ASSERT (*reinterpret_cast<size_type*>(&x.a[2 * sentinel_size + value_size]) == -x.allocator_size + 4 * sentinel_size + value_size);
-        CPPUNIT_ASSERT (*reinterpret_cast<size_type*>(&x.a[x.allocator_size - sentinel_size]) == -x.allocator_size + 4 * sentinel_size + value_size);
+    void test_valid_1() {
+        Allocator<double, 100>  x;
+        CPPUNIT_ASSERT(x.valid());
     }
 
-    /* test if deallocate merges this block with adjacent free blocks */
-    void test_deallocate_3 () {
-        A x;
-        size_type sentinel_value = x.allocator_size - 2 * sentinel_size;
-        *reinterpret_cast<size_type*>(&x.a[0]) = -value_size;
-        *reinterpret_cast<size_type*>(&x.a[sentinel_size + value_size]) = -value_size;
-        *reinterpret_cast<size_type*>(&x.a[2 * sentinel_size + value_size]) = x.allocator_size - 4 * sentinel_size - value_size;
-        *reinterpret_cast<size_type*>(&x.a[x.allocator_size - sentinel_size]) = x.allocator_size - 4 * sentinel_size - value_size;
-        x.deallocate (reinterpret_cast<pointer>(&x.a[4]));
-        CPPUNIT_ASSERT (*reinterpret_cast<size_type*>(&x.a[0]) == sentinel_value);
-        CPPUNIT_ASSERT (*reinterpret_cast<size_type*>(&x.a[x.allocator_size - sentinel_size]) == sentinel_value);
+    void test_valid_2() {
+        Allocator<double, 100>  x;
+        *reinterpret_cast<int*>(&(x.a[0])) = -92;
+        CPPUNIT_ASSERT(!x.valid());
     }
+
+    void test_valid_3() {
+        Allocator<double, 100>  x;
+        int free = *reinterpret_cast<int*>(&(x.a[0]));
+        *reinterpret_cast<int*>(&(x.a[free + sizeof(int)])) = -92;
+        CPPUNIT_ASSERT(!x.valid());
+    }
+
+    void test_valid_4() {
+        Allocator<double, 100>  x;
+        *reinterpret_cast<int*>(&(x.a[0])) = -40;
+        *reinterpret_cast<int*>(&(x.a[44])) = -40;
+        *reinterpret_cast<int*>(&(x.a[48])) = 44;
+        *reinterpret_cast<int*>(&(x.a[96])) = 44;
+        CPPUNIT_ASSERT(x.valid());
+    }
+
+    void test_valid_5() {
+        Allocator<double, 100>  x;
+        *reinterpret_cast<int*>(&(x.a[0])) = -20;
+        *reinterpret_cast<int*>(&(x.a[24])) = -20;
+        *reinterpret_cast<int*>(&(x.a[28])) = -30;
+        *reinterpret_cast<int*>(&(x.a[62])) = -30;
+        *reinterpret_cast<int*>(&(x.a[66])) = 26;
+        *reinterpret_cast<int*>(&(x.a[96])) = 26;
+        CPPUNIT_ASSERT(x.valid());
+    }
+
+    // --------
+    // constructor
+    // --------
+
+    void test_constructor_1(){
+        try{
+            Allocator<int,4> x;
+            CPPUNIT_ASSERT(false);
+        }
+        catch(std::bad_alloc& e){
+            CPPUNIT_ASSERT(true);
+        }
+    }
+
+    void test_constructor_2(){
+        Allocator<int, 100> x;
+        CPPUNIT_ASSERT(x.valid());
+        Allocator<double, 100> y;
+        CPPUNIT_ASSERT(y.valid());
+    }
+    
+    void test_allocate_1() {
+      Allocator<double, 100> x;
+      x.allocate(5);
+      int i = *reinterpret_cast<int*>(&(x.a[0]));
+      CPPUNIT_ASSERT(i ==  -40);
+      i = *reinterpret_cast<int*>(&(x.a[48]));
+      CPPUNIT_ASSERT(i == -40);
+      i = *reinterpret_cast<int*>(&(x.a[52]));
+      CPPUNIT_ASSERT(i == 44);
+      i = *reinterpret_cast<int*>(&(x.a[96]));
+      CPPUNIT_ASSERT(i == 44);
+    }    
+
+    void test_allocate_2() {
+    
+    }    
 
     // -----
     // suite
     // -----
 
-    CPPUNIT_TEST_SUITE (OurTests);
-    CPPUNIT_TEST (test_constructor);
-    CPPUNIT_TEST (test_view_1);
-    CPPUNIT_TEST (test_view_2);
-    CPPUNIT_TEST (test_view_3);
-    CPPUNIT_TEST (test_valid_1);
-    CPPUNIT_TEST (test_valid_2);
-    CPPUNIT_TEST (test_valid_3);
-    CPPUNIT_TEST (test_allocate_1);
-    CPPUNIT_TEST (test_allocate_2);
-    CPPUNIT_TEST (test_allocate_3);
-    CPPUNIT_TEST (test_allocate_4);
-    CPPUNIT_TEST (test_deallocate_1);
-    CPPUNIT_TEST (test_deallocate_2);
-    CPPUNIT_TEST (test_deallocate_3);
-    CPPUNIT_TEST_SUITE_END ();};
+    CPPUNIT_TEST_SUITE(MyTests);
+    CPPUNIT_TEST(test_valid_1);
+    CPPUNIT_TEST(test_valid_2);
+    CPPUNIT_TEST(test_valid_3);
+    CPPUNIT_TEST(test_valid_4);
+    CPPUNIT_TEST(test_valid_5);
+    CPPUNIT_TEST(test_constructor_1);
+    CPPUNIT_TEST(test_constructor_2);
+    CPPUNIT_TEST(test_allocate_1);
+    //CPPUNIT_TEST(test_allocate_2);
+    CPPUNIT_TEST_SUITE_END();};
+
 
 // ----
 // main
@@ -288,26 +209,13 @@ int main () {
 
     CppUnit::TextTestRunner tr;
 
-    tr.addTest(TestAllocator< std::allocator<int> >::suite());
-    tr.addTest(TestAllocator< Allocator<int, 100> >::suite());
+   // tr.addTest(TestAllocator< std::allocator<int> >::suite());
+   // tr.addTest(TestAllocator< Allocator<int, 100> >::suite()); // uncomment!
 
-    tr.addTest(TestAllocator< std::allocator<double> >::suite());
-    tr.addTest(TestAllocator< Allocator<double, 100> >::suite());
+   // tr.addTest(TestAllocator< std::allocator<double> >::suite());
+   // tr.addTest(TestAllocator< Allocator<double, 100> >::suite()); // uncomment!
+    tr.addTest(MyTests::suite());   
 
-    tr.addTest(OurTests< Allocator<char, 100> >::suite());
-    tr.addTest(OurTests< Allocator<int, 100> >::suite());
-    tr.addTest(OurTests< Allocator<double, 100> >::suite());
-    tr.addTest(OurTests< Allocator<long long, 100> >::suite ());
-
-    tr.addTest(OurTests< Allocator<char, 1000> >::suite());
-    tr.addTest(OurTests< Allocator<int, 1000> >::suite());
-    tr.addTest(OurTests< Allocator<double, 1000> >::suite());
-    tr.addTest(OurTests< Allocator<long long, 1000> >::suite ());
-
-    tr.addTest(OurTests< Allocator<char, 10000> >::suite());
-    tr.addTest(OurTests< Allocator<int, 10000> >::suite());
-    tr.addTest(OurTests< Allocator<double, 10000> >::suite());
-    tr.addTest(OurTests< Allocator<long long, 10000> >::suite ());
 
     tr.run();
 
