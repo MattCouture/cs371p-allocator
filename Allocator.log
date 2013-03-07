@@ -1,0 +1,29 @@
+commit 499e0c0f8ac16347cf0bad589d77aa2fc5a4e56c
+Author: Matthew Couture <mattsqui@cs.utexas.edu>
+Date:   Thu Mar 7 02:48:22 2013 -0600
+
+    Add code for deallocate() and test output
+
+commit f284851e3d7a85a3ab3f744436c418f72359c6b3
+Author: Matthew Couture <mattsqui@cs.utexas.edu>
+Date:   Wed Mar 6 22:08:08 2013 -0600
+
+    Added code and tests for allocate()
+
+commit fb304706487f5a28d28c8234b5ad6828ef5dc90e
+Author: Matthew Couture <mattsqui@cs.utexas.edu>
+Date:   Wed Mar 6 17:19:08 2013 -0600
+
+    Added code and tests for valid and constructor
+
+commit dd86d07511cfb48147748fc0c631f08cd6220ff7
+Author: Matthew Couture <mattsqui@cs.utexas.edu>
+Date:   Mon Mar 4 19:00:03 2013 -0600
+
+    initial commit with header and test file
+
+commit 1c4ac6d16f220081bd471f763fa5ec43367f19b2
+Author: MattCouture <codefelp@gmail.com>
+Date:   Sat Mar 2 13:44:35 2013 -0800
+
+    Initial commit
