@@ -193,14 +193,11 @@ struct MyTests : CppUnit::TestFixture {
     void test_allocate_1() {
       Allocator<double, 100> x;
       x.allocate(5);
-      int i = *reinterpret_cast<int*>(&(x.a[0]));
-      CPPUNIT_ASSERT(i ==  -40);
-      i = *reinterpret_cast<int*>(&(x.a[44]));
-      CPPUNIT_ASSERT(i == -40);
-      i = *reinterpret_cast<int*>(&(x.a[48]));
-      CPPUNIT_ASSERT(i == 44);
-      i = *reinterpret_cast<int*>(&(x.a[96]));
-      CPPUNIT_ASSERT(i == 44);
+      CPPUNIT_ASSERT(x.view(x.a[0]) ==  -40);
+      CPPUNIT_ASSERT(x.view(x.a[44]) == -40);
+      CPPUNIT_ASSERT(x.view(x.a[48]) == 44);
+      CPPUNIT_ASSERT(x.view(x.a[96]) == 44);
+      CPPUNIT_ASSERT(x.valid());
     }    
 
    void test_allocate_2 () {
@@ -249,7 +246,66 @@ struct MyTests : CppUnit::TestFixture {
      CPPUNIT_ASSERT(x.view(x.a[96]) == -12);
      CPPUNIT_ASSERT(x.valid());
     }
+ 
+   void test_allocate_6()
+    {
+      Allocator<int, 100> x;
+      x.allocate(10);
+      x.allocate(8);
+      x.allocate(1);
+      try
+      {
+        x.allocate(1);
+        CPPUNIT_ASSERT(false);
+      }
+      catch (std::bad_alloc e)
+      {
+        CPPUNIT_ASSERT(true);
+      }
+      CPPUNIT_ASSERT(x.valid());
+    }    
+
+    //-----------
+    // deallocate
+    //-----------
     
+    void test_deallocate_1 () {
+     Allocator<char, 100> x;
+     char* p1 = x.allocate(91);
+     x.deallocate(p1);
+     CPPUNIT_ASSERT(x.view(x.a[0]) == 92);
+     CPPUNIT_ASSERT(x.view(x.a[96]) == 92);
+     CPPUNIT_ASSERT(x.valid());	
+    }
+
+    void test_deallocate_2 () {
+     Allocator<char, 100> x;
+     char* p1 = x.allocate(5);
+     x.deallocate(p1);
+     CPPUNIT_ASSERT(x.view(x.a[0]) == 92);
+     CPPUNIT_ASSERT(x.view(x.a[96]) == 92);
+     CPPUNIT_ASSERT(x.valid());
+    }
+   
+    void test_deallocate_3()
+    {
+      Allocator<int, 100> x;
+      x.allocate(5);
+      int* p = x.allocate(5);
+      x.allocate(5);
+      x.deallocate(p);
+      CPPUNIT_ASSERT(x.valid());
+    }
+ 
+    void test_deallocate_4() {
+      Allocator<int, 100> x;
+      int* p = x.allocate(5);
+      int* q = x.allocate(5);
+      x.allocate(5);
+      x.deallocate(p);
+      x.deallocate(q);
+      CPPUNIT_ASSERT(x.valid());
+    }
 
     // -----
     // suite
@@ -271,6 +327,11 @@ struct MyTests : CppUnit::TestFixture {
     CPPUNIT_TEST(test_allocate_3);
     CPPUNIT_TEST(test_allocate_4);
     CPPUNIT_TEST(test_allocate_5);
+    CPPUNIT_TEST(test_allocate_6);
+    CPPUNIT_TEST(test_deallocate_1);
+    CPPUNIT_TEST(test_deallocate_2);
+    CPPUNIT_TEST(test_deallocate_3);
+    CPPUNIT_TEST(test_deallocate_4);
     CPPUNIT_TEST_SUITE_END();};
 
 
@@ -285,11 +346,12 @@ int main () {
 
     CppUnit::TextTestRunner tr;
 
-   // tr.addTest(TestAllocator< std::allocator<int> >::suite());
-   // tr.addTest(TestAllocator< Allocator<int, 100> >::suite()); // uncomment!
+    tr.addTest(TestAllocator< std::allocator<int> >::suite());
+    tr.addTest(TestAllocator< Allocator<int, 100> >::suite()); // uncomment!
 
-   // tr.addTest(TestAllocator< std::allocator<double> >::suite());
-   // tr.addTest(TestAllocator< Allocator<double, 100> >::suite()); // uncomment!
+    tr.addTest(TestAllocator< std::allocator<double> >::suite());
+    tr.addTest(TestAllocator< Allocator<double, 100> >::suite()); // uncomment!
+   
     tr.addTest(MyTests::suite());   
 
 

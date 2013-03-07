@@ -15,7 +15,6 @@
 #include <new> // new
 #include <stdexcept> // invalid_argument
 #include <array>
-#include <iostream>
 
 // ---------
 // Allocator
@@ -69,6 +68,10 @@ class Allocator {
 * O(1) in space
 * O(n) in time
 * <your documentation>
+  b is the index that is used to go through array
+  i and j are the pair of sentinels, if they don't match, return false
+  increment b to index of next sentinel and loop until at end of array
+
 */
 
      bool valid () const {
@@ -103,6 +106,8 @@ class Allocator {
 * O(1) in space
 * O(1) in time
 * <your documentation>
+  If size of array is too small, bad_alloc exception is thrown
+  p1 and p2 are used to put in values of sentinels
 */
         Allocator () {
             // <your code>
@@ -129,6 +134,18 @@ class Allocator {
 * O(1) in space
 * O(n) in time
 * <your documentation>
+  b is used as an iterator through the array.
+  n becomes the number of bytes to be allocated.
+  If the number the block being checked is large, memory will be allocated.
+     If the space after allocation is too small, the leftover space will be allocated as well.
+     p5 and p6 are used to change sentinels to be negative, pointer p is the first byte in the allocated block and is returned.
+  p1 and p2 are used to change sentinels to be negative
+  newb and newSent are the index and sentinel respectively for the new free block
+  p3 and p4 are used to put in the new sentinels for the free block
+  pointer p is the first byte in the allocated block and is returned.
+  
+  If b goes through whole array and doesn't find enough free space, bad_alloc exception is thrown
+
 * after allocation there must be enough space left for a valid block
 * the smallest allowable block is sizeof(T) + (2 * sizeof(int))
 * choose the first block that fits
@@ -185,7 +202,7 @@ class Allocator {
 * <your documentation>
 */
         void construct (pointer p, const_reference v) {
-            //new (p) T(v); // uncomment!
+            new (p) T(v); // uncomment!
             assert(valid());}
 
         // ----------
@@ -196,12 +213,46 @@ class Allocator {
 * O(1) in space
 * O(1) in time
 * <your documentation>
+  index is the index in the array that pointer p is pointing at
+  p1 and p2 are used to change the sentinel values from negative to postive, freeing them
+  Depending on where p is in the array, the left or right block is then checked to see if it is also free
+     If so, free blocks are combined
+ 
 * after deallocation adjacent free blocks must be coalesced
 */
         void deallocate (pointer p, size_type = 0) {
             // <your code>
+            int index = reinterpret_cast<char*>(p) - &a[0];
+            int sentinel = view(a[index - 4]);
+            int* p1 = reinterpret_cast<int*>(&a[index - 4]);
+            *p1 = sentinel * -1;
+            int* p2 = reinterpret_cast<int*>(&a[index - sentinel]);
+            *p2 = sentinel * -1;
             
-            assert(valid());}
+            int pToEnd = &a[N-1] - reinterpret_cast<char*>(p);
+            int smallestBlock = (sizeof(T) + (2 * sizeof(int)));
+            if(index - 4 >= smallestBlock) {
+               int leftSentinel = view(a[index-8]);
+               if(leftSentinel > 0) {
+                 int newSentinel = leftSentinel + (sentinel * -1) + 8; 
+                 int* p3 = reinterpret_cast<int*>(&a[index - 12 - leftSentinel]);
+                 *p3 = newSentinel;
+                 *p2 = newSentinel;
+               }
+            }
+
+            else if(pToEnd - 4 - (sentinel * -1) >= smallestBlock) {
+              int rightSentinel = view(a[index - sentinel + 4]);
+              if(rightSentinel > 0) {
+                int newSentinel = rightSentinel + (sentinel * -1) + 8;
+                int* p4 = reinterpret_cast<int*>(&a[index + (sentinel * -1) + rightSentinel + 8]);
+                *p4 = newSentinel;
+                *p1 = newSentinel;
+              }
+            }
+            assert(valid());
+
+        }
 
         // -------
         // destroy
@@ -213,7 +264,7 @@ class Allocator {
 * <your documentation>
 */
         void destroy (pointer p) {
-            //p->~T(); // uncomment!
+            p->~T(); // uncomment!
             assert(valid());}};
 
 #endif // Allocator_h
