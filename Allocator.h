@@ -15,6 +15,7 @@
 #include <new> // new
 #include <stdexcept> // invalid_argument
 #include <array>
+#include <iostream>
 
 // ---------
 // Allocator
@@ -138,25 +139,29 @@ class Allocator {
             int b = 0;
             n = n * sizeof(T);
             while(b < N){ 
-            int& sentinel = view(a[b]);
+            int sentinel = view(a[b]);
+            int smallestBlock = (sizeof(T) + (2 * sizeof(int)));
             if(sentinel >= n) {
+               if(  (sentinel - n) < smallestBlock  ) {
+                n = sentinel;
+                int* p5 = reinterpret_cast<int*>(&a[b]);
+                *p5 = n * -1;
+                int* p6 = reinterpret_cast<int*>(&a[b + n + 4]);
+                *p6 = n * -1;
+                p = reinterpret_cast<value_type*>(&a[b + 4]);
+                assert(valid());
+                return p;
+              }
               int* p1 = reinterpret_cast<int*>(&a[b]);
               *p1 = n * -1;
               int* p2 = reinterpret_cast<int*>(&a[b + n + 4]);
               *p2 = n * -1;
               int newb = b + n + 8;
-              int smallestBlock = (sizeof(T) + (2 * sizeof(int)));
-              if(  (N - newb) < smallestBlock  ) {
-                n = n + (N - newb);
-                a[b] = n * -1;
-                a[b + n + 4] = n * -1;
-                p = reinterpret_cast<value_type*>(&a[b + 4]);
-                assert(valid());
-                return p;
-              }
-              int newSent = N - newb - 8;
-              a[newb] = newSent;
-              a[newb + 4 + newSent] = newSent;
+              int newSent = sentinel - n - 8;
+              int* p3 = reinterpret_cast<int*>(&a[newb]);
+              *p3 = newSent;
+              int* p4 = reinterpret_cast<int*>(&a[newb + 4 + newSent]);
+              *p4 = newSent;
               p = reinterpret_cast<value_type*>(&a[b + 4]);
               assert(valid());
               return p;  
@@ -195,6 +200,7 @@ class Allocator {
 */
         void deallocate (pointer p, size_type = 0) {
             // <your code>
+            
             assert(valid());}
 
         // -------
